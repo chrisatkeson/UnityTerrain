@@ -1,0 +1,4 @@
+.DS_Store
+
+# Large DEM source files (too big for git, download from USGS)
+Data/*.tif
