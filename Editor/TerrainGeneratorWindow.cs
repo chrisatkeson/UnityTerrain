@@ -21,7 +21,6 @@ namespace UnityTerrain
         double cropEast = -110.65;
 
         // --- Terrain settings ---
-        float terrainHeight = 2500f;
         int tileGrid = 1; // 1=1x1, 2=2x2, 3=3x3
         static readonly string[] TileGridOptions = { "1x1", "2x2", "3x3" };
         static readonly int[] TileGridValues = { 1, 2, 3 };
@@ -115,7 +114,6 @@ namespace UnityTerrain
         void DrawTerrainSettings()
         {
             EditorGUILayout.LabelField("Terrain Settings", EditorStyles.miniBoldLabel);
-            terrainHeight = EditorGUILayout.FloatField("Max Height (m)", terrainHeight);
             tileGrid = TileGridValues[EditorGUILayout.Popup("Tile Grid", Array.IndexOf(TileGridValues, tileGrid), TileGridOptions)];
         }
 
@@ -272,6 +270,11 @@ namespace UnityTerrain
                 float terrainWidthM = (float)((cropEast - cropWest) * 111320.0 * Math.Cos(centerLat * Math.PI / 180.0));
                 float terrainLengthM = (float)((cropNorth - cropSouth) * 110574.0);
 
+                // Normalize elevation: base min elevation to 0, use relief range as height
+                float elevRange = croppedMaxElev - croppedMinElev;
+                if (elevRange < 1f) elevRange = 1f;
+                float actualTerrainHeight = elevRange * 1.05f; // 5% headroom
+
                 // Heightmap resolution per tile (must be power-of-2 + 1)
                 int hmRes = PickHeightmapResolution(croppedWidth, croppedHeight, tileGrid);
 
@@ -324,15 +327,15 @@ namespace UnityTerrain
                                 float sy = Mathf.Lerp(dataSouthRow, dataNorthRow, (float)hy / (hmRes - 1));
 
                                 float elev = SampleBilinear(croppedElevations, croppedWidth, croppedHeight, sx, sy);
-                                // Normalize: 0 = sea level, 1 = terrainHeight
-                                heights[hy, hx] = Mathf.Clamp01(elev / terrainHeight);
+                                // Normalize: 0 = min elevation, 1 = max elevation + headroom
+                                heights[hy, hx] = Mathf.Clamp01((elev - croppedMinElev) / actualTerrainHeight);
                             }
                         }
 
                         // Create TerrainData
                         var td = new TerrainData();
                         td.heightmapResolution = hmRes;
-                        td.size = new Vector3(tileWidthM, terrainHeight, tileLengthM);
+                        td.size = new Vector3(tileWidthM, actualTerrainHeight, tileLengthM);
                         td.SetHeights(0, 0, heights);
 
                         AssetDatabase.CreateAsset(td, $"{assetDir}/{tileName}.asset");
@@ -380,7 +383,8 @@ namespace UnityTerrain
                 EditorUtility.DisplayDialog("Success",
                     $"Terrain generated!\n\n" +
                     $"Size: {terrainWidthM:F0}m × {terrainLengthM:F0}m\n" +
-                    $"Height: {terrainHeight:F0}m\n" +
+                    $"Elevation: {croppedMinElev:F0}m – {croppedMaxElev:F0}m (range: {elevRange:F0}m)\n" +
+                    $"Unity Y=0 corresponds to {croppedMinElev:F0}m above sea level\n" +
                     $"Tiles: {tileGrid}×{tileGrid}\n" +
                     $"Resolution: {hmRes}×{hmRes} per tile",
                     "OK");

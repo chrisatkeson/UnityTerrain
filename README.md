@@ -32,7 +32,7 @@ The Grand Tetons are covered by tile `USGS_13_n44w111` (~396MB).
 - Approximately 20km × 28km
 
 ### Settings
-- **Max Height**: Terrain height ceiling in meters (default 2500m, covers the Tetons' ~2300m range)
+- **Max Height**: Terrain height ceiling in meters (default 5000m, covers the Tetons' peak at ~4195m)
 - **Tile Grid**: Split into 1×1, 2×2, or 3×3 tiles for better heightmap resolution over large areas
 
 ## How It Works
